@@ -1,5 +1,6 @@
 var recommendedIds = ["carefree", "inspired", "wallpaper", "wholesome", "pamgaea", "fretless"];
 var popularIds = ["hyperfun", "undaunted", "cipher", "song-1", "voltaic", "klockworx"];
+var toiIds = ["zhimeney-toi-bastar", "zhimeney-kyzyl-orik", "nurtas-ol-sen-emes", "kara-zhorga", "nurtas-kyzyl-gulim", "nurtas-kaida-kaida"];
 
 var route = "home";
 var searchQuery = "";
@@ -161,6 +162,7 @@ function renderHome(recentIds) {
   return '' +
     '<header class="page-head"><h2>' + greeting() + '</h2><p>Pick up a song on music.base.</p></header>' +
     '<section class="block"><h3>Recently Played</h3><div id="recent-slot">' + recentHtml + '</div></section>' +
+    '<section class="block"><h3>Тойские хиты</h3><div class="cards">' + cards(toiIds, "playlist:toi") + '</div></section>' +
     '<section class="block"><h3>Recommended for You</h3><div class="cards">' + cards(recommendedIds, "ids:" + recommendedIds.join(",")) + '</div></section>' +
     '<section class="block"><h3>Popular Tracks</h3><div class="cards">' + cards(popularIds, "ids:" + popularIds.join(",")) + '</div></section>' +
     '<section class="block"><h3>Artists</h3><div class="cards">' + artistHtml + '</div></section>';
@@ -186,7 +188,7 @@ function searchMarkup(query) {
   }
   for (i = 0; i < MusicData.tracks.length; i += 1) {
     track = MusicData.tracks[i];
-    hay = (track.title + " " + track.artist).toLowerCase();
+    hay = (track.title + " " + track.artist + " " + (track.keywords || "")).toLowerCase();
     if (hay.indexOf(needle) !== -1) {
       matches.push(track);
     }
@@ -228,7 +230,7 @@ function renderPlaylists() {
         (open ? rows(tracks, "playlist:" + playlist.id) : "") +
       '</article>';
   }
-  return '<header class="page-head"><h2>Playlists</h2><p>Three sets from the catalog.</p></header><div class="playlists">' + html + '</div>';
+  return '<header class="page-head"><h2>Playlists</h2><p>' + MusicData.playlists.length + ' playlists from the catalog.</p></header><div class="playlists">' + html + '</div>';
 }
 
 function renderLiked(likedMap) {

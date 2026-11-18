@@ -112,9 +112,114 @@ var MusicData = {
       artist: "SoundHelix",
       src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
       tone: 3
+    },
+
+    // Казахские тойские хиты. Аудио не встроено (песни под авторским правом):
+    // положите свои купленные/лицензионные mp3 в папку music/ под этими именами.
+    {
+      id: "nurtas-ol-sen-emes",
+      title: "Ол сен емес",
+      artist: "Кайрат Нуртас",
+      keywords: "Qairat Kairat Nurtas Қайрат Нұртас Ol sen emes",
+      src: "music/nurtas-ol-sen-emes.mp3",
+      local: true,
+      tone: 0
+    },
+    {
+      id: "nurtas-kyzyl-gulim",
+      title: "Қызыл гүлім-ай",
+      artist: "Кайрат Нуртас",
+      keywords: "Qairat Kairat Nurtas Қайрат Нұртас Kyzyl gulim ai кызыл гулим",
+      src: "music/nurtas-kyzyl-gulim.mp3",
+      local: true,
+      tone: 1
+    },
+    {
+      id: "nurtas-kaida-kaida",
+      title: "Қайда қайда",
+      artist: "Кайрат Нуртас",
+      keywords: "Qairat Kairat Nurtas Қайрат Нұртас Kaida kaida кайда",
+      src: "music/nurtas-kaida-kaida.mp3",
+      local: true,
+      tone: 2
+    },
+    {
+      id: "nurtas-baralmadym",
+      title: "Баралмадым қасыңа",
+      artist: "Кайрат Нуртас",
+      keywords: "Qairat Kairat Nurtas Қайрат Нұртас Baralmadym kasyna касына",
+      src: "music/nurtas-baralmadym.mp3",
+      local: true,
+      tone: 3
+    },
+    {
+      id: "nurtas-ansaidy-zhanym",
+      title: "Аңсайды жаным",
+      artist: "Кайрат Нуртас",
+      keywords: "Qairat Kairat Nurtas Қайрат Нұртас Ansaidy zhanym ансайды",
+      src: "music/nurtas-ansaidy-zhanym.mp3",
+      local: true,
+      tone: 4
+    },
+    {
+      id: "nurtas-seni-suiem",
+      title: "Сені сүйем",
+      artist: "Кайрат Нуртас",
+      keywords: "Qairat Kairat Nurtas Қайрат Нұртас Seni suiem сени суйем",
+      src: "music/nurtas-seni-suiem.mp3",
+      local: true,
+      tone: 5
+    },
+    {
+      id: "zhimeney-kyzyl-orik",
+      title: "Қызыл өрік",
+      artist: "Акылбек Жименей",
+      keywords: "Akylbek Zhimeney Ақылбек Kyzyl orik кызыл орик",
+      src: "music/zhimeney-kyzyl-orik.mp3",
+      local: true,
+      tone: 1
+    },
+    {
+      id: "zhimeney-toi-bastar",
+      title: "Той бастар",
+      artist: "Акылбек Жименей",
+      keywords: "Akylbek Zhimeney Ақылбек Toi bastar той",
+      src: "music/zhimeney-toi-bastar.mp3",
+      local: true,
+      tone: 0
+    },
+    {
+      id: "kara-zhorga",
+      title: "Қара жорға",
+      artist: "Народная",
+      keywords: "Kara zhorga кара жорга халық әні",
+      src: "music/kara-zhorga.mp3",
+      local: true,
+      tone: 3
+    },
+    {
+      id: "atameken",
+      title: "Атамекен",
+      artist: "Ескендир Хасангалиев",
+      keywords: "Atameken Eskendir Khassangaliyev Ескендір",
+      src: "music/atameken.mp3",
+      local: true,
+      tone: 2
     }
   ],
   playlists: [
+    {
+      id: "toi",
+      title: "Той хиттері",
+      description: "То, что ставят на каждом тое.",
+      trackIds: ["zhimeney-toi-bastar", "zhimeney-kyzyl-orik", "nurtas-ol-sen-emes", "kara-zhorga", "nurtas-kyzyl-gulim", "nurtas-kaida-kaida", "atameken"]
+    },
+    {
+      id: "nurtas",
+      title: "Кайрат Нуртас",
+      description: "Лучшие песни Кайрата.",
+      trackIds: ["nurtas-ol-sen-emes", "nurtas-kyzyl-gulim", "nurtas-kaida-kaida", "nurtas-baralmadym", "nurtas-ansaidy-zhanym", "nurtas-seni-suiem"]
+    },
     {
       id: "daylight",
       title: "Daylight",

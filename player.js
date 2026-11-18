@@ -320,7 +320,10 @@ var Player = (function () {
 
     audio.addEventListener("error", function () {
       state.playing = false;
-      state.error = "This track did not load. Try the next one.";
+      var failed = currentTrack();
+      state.error = failed && failed.local
+        ? "Нет файла: " + failed.src
+        : "This track did not load. Try the next one.";
       emit("error");
     });
   }
