@@ -8,6 +8,10 @@ var openPlaylistId = "";
 var lastSnapshot = null;
 var pageDrawn = false;
 var shownTrackId = "";
+var authKey = "";
+var authUserId = null;
+var toastTimer = 0;
+var modalReturnFocus = null;
 
 function icon(id, filled) {
   var cls = filled ? "icon icon-fill" : "icon";
@@ -160,7 +164,7 @@ function renderHome(recentIds) {
     artistHtml += artistCard(artists[i]);
   }
   return '' +
-    '<header class="page-head"><h2>' + greeting() + '</h2><p>Pick up a song on music.base.</p></header>' +
+    '<header class="page-head"><h2>' + greeting() + (Auth.user() ? ", " + escapeHtml(Auth.displayName()) : "") + '</h2><p>Pick up a song on music.base.</p></header>' +
     '<section class="block"><h3>Recently Played</h3><div id="recent-slot">' + recentHtml + '</div></section>' +
     '<section class="block"><h3>Тойские хиты</h3><div class="cards">' + cards(toiIds, "playlist:toi") + '</div></section>' +
     '<section class="block"><h3>Recommended for You</h3><div class="cards">' + cards(recommendedIds, "ids:" + recommendedIds.join(",")) + '</div></section>' +
@@ -242,7 +246,315 @@ function renderLiked(likedMap) {
     }
   }
   var body = ids.length ? rows(tracksByIds(ids), "liked") : '<p class="empty">Save a song with the heart and it stays here.</p>';
-  return '<header class="page-head"><h2>Liked Songs</h2><p>Tracks you kept.</p></header>' + body;
+  if (!Auth.isReady()) {
+    body = '<p class="empty">Loading your favorites…</p>';
+  } else if (!Auth.user()) {
+    body = authCallout("Log in to keep your favorite songs in your account.");
+  }
+  return '<header class="page-head"><h2>Liked Songs</h2><p>' + (Auth.user() ? "Tracks you kept, saved to your account." : "Tracks you kept.") + '</p></header>' + body;
+}
+
+// ---------- Аккаунт: страницы Login / Register / Profile ----------
+
+function authCallout(text) {
+  return '' +
+    '<div class="auth-callout">' +
+      '<p>' + escapeHtml(text) + '</p>' +
+      '<div class="modal-actions">' +
+        '<button class="primary-btn" type="button" data-route="login">Log in</button>' +
+        '<button class="secondary-btn" type="button" data-route="register">Sign up</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function field(name, label, type, autocomplete) {
+  return '' +
+    '<label class="field">' +
+      '<span>' + label + '</span>' +
+      '<input name="' + name + '" type="' + type + '" autocomplete="' + autocomplete + '" aria-describedby="err-' + name + '">' +
+      '<small class="field-error" id="err-' + name + '"></small>' +
+    '</label>';
+}
+
+function disabledNotice() {
+  if (Auth.isEnabled()) {
+    return "";
+  }
+  return '<p class="form-notice">Accounts are not connected yet: add your Supabase URL and anon key to config.js.</p>';
+}
+
+function renderLogin() {
+  return '' +
+    '<header class="page-head"><h2>Log in</h2><p>Welcome back to music.base.</p></header>' +
+    '<form class="auth-form" id="login-form" novalidate>' +
+      disabledNotice() +
+      field("email", "Email", "email", "email") +
+      field("password", "Password", "password", "current-password") +
+      '<p class="form-error" role="alert" hidden></p>' +
+      '<button class="primary-btn" type="submit">Log in</button>' +
+      '<p class="form-alt">No account yet? <a href="#register">Sign up</a></p>' +
+    '</form>';
+}
+
+function renderRegister() {
+  return '' +
+    '<header class="page-head"><h2>Create account</h2><p>Save your favorite songs and keep them on any device.</p></header>' +
+    '<form class="auth-form" id="register-form" novalidate>' +
+      disabledNotice() +
+      field("username", "Username", "text", "username") +
+      field("email", "Email", "email", "email") +
+      field("password", "Password", "password", "new-password") +
+      field("confirm", "Confirm password", "password", "new-password") +
+      '<p class="form-error" role="alert" hidden></p>' +
+      '<button class="primary-btn" type="submit">Sign up</button>' +
+      '<p class="form-alt">Already have an account? <a href="#login">Log in</a></p>' +
+    '</form>';
+}
+
+function formatDate(value) {
+  var date = new Date(value);
+  if (!value || isNaN(date.getTime())) {
+    return "—";
+  }
+  return date.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function renderProfile(snapshot) {
+  var user = Auth.user();
+  var profile = Auth.profile() || {};
+  var name;
+  var count;
+  if (!user) {
+    return renderLogin();
+  }
+  name = Auth.displayName();
+  count = Object.keys(snapshot.liked).length;
+  return '' +
+    '<header class="page-head"><h2>Profile</h2><p>Your music.base account.</p></header>' +
+    '<section class="profile-card">' +
+      '<div class="art art-round avatar-xl tone-0"><span>' + escapeHtml(initials(name)) + '</span></div>' +
+      '<div class="profile-copy">' +
+        '<p class="eyebrow">Signed in</p>' +
+        '<h3>' + escapeHtml(name) + '</h3>' +
+        '<p>' + escapeHtml(user.email || "") + '</p>' +
+      '</div>' +
+    '</section>' +
+    '<div class="stats">' +
+      '<div class="stat"><strong>' + count + '</strong><span>' + (count === 1 ? "Favorite song" : "Favorite songs") + '</span></div>' +
+      '<div class="stat"><strong>' + escapeHtml(formatDate(profile.created_at || user.created_at)) + '</strong><span>Member since</span></div>' +
+    '</div>' +
+    '<div class="profile-actions">' +
+      '<button class="primary-btn" type="button" data-route="liked">' + icon("i-heart") + 'Open favorites</button>' +
+      '<button class="secondary-btn" type="button" data-action="logout">' + icon("i-logout") + 'Log out</button>' +
+    '</div>';
+}
+
+function renderAccount() {
+  var box = document.getElementById("account");
+  var name;
+  if (!box) {
+    return;
+  }
+  if (!Auth.isReady()) {
+    box.innerHTML = "";
+    return;
+  }
+  if (!Auth.user()) {
+    box.innerHTML = '' +
+      '<p class="menu-label">Account</p>' +
+      '<button class="nav-btn" type="button" data-route="login">' + icon("i-user") + '<span>Log in</span></button>' +
+      '<button class="nav-btn account-extra" type="button" data-route="register">' + icon("i-user") + '<span>Sign up</span></button>';
+  } else {
+    name = Auth.displayName();
+    box.innerHTML = '' +
+      '<p class="menu-label">Account</p>' +
+      '<button class="nav-btn account-user" type="button" data-route="profile" aria-label="Profile: ' + escapeHtml(name) + '">' +
+        '<span class="avatar" aria-hidden="true">' + escapeHtml(initials(name)) + '</span><span>' + escapeHtml(name) + '</span>' +
+      '</button>' +
+      '<button class="nav-btn account-extra" type="button" data-action="logout">' + icon("i-logout") + '<span>Log out</span></button>';
+  }
+  markActiveNav();
+}
+
+function markActiveNav() {
+  var buttons = document.querySelectorAll(".nav-btn");
+  var i;
+  for (i = 0; i < buttons.length; i += 1) {
+    buttons[i].classList.toggle("is-active", buttons[i].getAttribute("data-route") === route);
+  }
+}
+
+// ---------- Формы ----------
+
+function formValues(form) {
+  var values = {};
+  var inputs = form.querySelectorAll("input[name]");
+  var i;
+  for (i = 0; i < inputs.length; i += 1) {
+    values[inputs[i].name] = inputs[i].value;
+  }
+  return values;
+}
+
+function setFormErrors(form, errors, message) {
+  var inputs = form.querySelectorAll("input[name]");
+  var box = form.querySelector(".form-error");
+  var first = null;
+  var i;
+  var input;
+  var hint;
+  for (i = 0; i < inputs.length; i += 1) {
+    input = inputs[i];
+    hint = document.getElementById("err-" + input.name);
+    if (errors[input.name]) {
+      input.setAttribute("aria-invalid", "true");
+      first = first || input;
+    } else {
+      input.removeAttribute("aria-invalid");
+    }
+    if (hint) {
+      hint.textContent = errors[input.name] || "";
+    }
+  }
+  box.textContent = message || "";
+  box.hidden = !message;
+  if (first) {
+    first.focus();
+  }
+}
+
+function setBusy(form, busy) {
+  var button = form.querySelector('button[type="submit"]');
+  if (!button.getAttribute("data-label")) {
+    button.setAttribute("data-label", button.textContent);
+  }
+  form.classList.toggle("is-busy", busy);
+  button.disabled = busy;
+  button.textContent = busy ? "Please wait…" : button.getAttribute("data-label");
+}
+
+function handleSubmit(event) {
+  var form = event.target;
+  var isLogin = form.id === "login-form";
+  var values;
+  var errors;
+  if (!isLogin && form.id !== "register-form") {
+    return;
+  }
+  event.preventDefault();
+  if (form.classList.contains("is-busy")) {
+    return;
+  }
+  values = formValues(form);
+  errors = isLogin ? Auth.validateLogin(values) : Auth.validateRegister(values);
+  setFormErrors(form, errors, "");
+  if (Object.keys(errors).length) {
+    return;
+  }
+  setBusy(form, true);
+  (isLogin ? Auth.signIn(values) : Auth.signUp(values)).then(function (result) {
+    var fieldErrors = {};
+    setBusy(form, false);
+    if (!result.ok) {
+      if (result.field) {
+        fieldErrors[result.field] = result.error;
+      }
+      if (isLogin) {
+        form.querySelector('input[name="password"]').value = "";
+      }
+      setFormErrors(form, fieldErrors, result.field ? "" : result.error);
+      return;
+    }
+    if (result.needsConfirmation) {
+      form.reset();
+      setFormErrors(form, {}, "");
+      form.querySelector(".form-error").hidden = true;
+      form.insertAdjacentHTML("afterbegin", '<p class="form-notice">Account created. Open the link in the email we sent you, then log in.</p>');
+      return;
+    }
+    showToast(isLogin ? "Welcome back!" : "Welcome to music.base, " + values.username.trim() + "!");
+    navigate("home");
+  });
+}
+
+// ---------- Модалка «войдите, чтобы лайкать» и всплывающие сообщения ----------
+
+function openAuthModal() {
+  var modal = document.getElementById("auth-modal");
+  modalReturnFocus = document.activeElement;
+  modal.hidden = false;
+  modal.querySelector(".primary-btn").focus();
+}
+
+function closeAuthModal() {
+  var modal = document.getElementById("auth-modal");
+  if (modal.hidden) {
+    return false;
+  }
+  modal.hidden = true;
+  if (modalReturnFocus && modalReturnFocus.focus && document.body.contains(modalReturnFocus)) {
+    modalReturnFocus.focus();
+  }
+  modalReturnFocus = null;
+  return true;
+}
+
+function showToast(text) {
+  var toast = document.getElementById("toast");
+  toast.textContent = text;
+  toast.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(function () {
+    toast.hidden = true;
+  }, 3200);
+}
+
+function logout() {
+  Auth.signOut().then(function () {
+    showToast("You are logged out.");
+    navigate("home");
+  });
+}
+
+// Какие страницы кому доступны: вошедшему не нужен Login, гостю недоступен Profile.
+function guardRoute(next) {
+  if ((next === "login" || next === "register") && Auth.user()) {
+    return "home";
+  }
+  if (next === "profile" && Auth.isReady() && !Auth.user()) {
+    return "login";
+  }
+  return next;
+}
+
+function onAuth(info) {
+  var userId = info.user ? info.user.id : "";
+  var key = (info.ready ? "1" : "0") + "|" + userId + "|" + Auth.displayName();
+  var guarded;
+  if (userId !== authUserId) {
+    authUserId = userId;
+    if (userId) {
+      Favorites.load();
+    } else {
+      Favorites.clear();
+    }
+  }
+  if (info.expired) {
+    showToast("Your session has ended. Please log in again.");
+  }
+  if (key === authKey) {
+    return;
+  }
+  authKey = key;
+  renderAccount();
+  guarded = guardRoute(route);
+  if (guarded !== route) {
+    navigate(guarded);
+    return;
+  }
+  if (lastSnapshot && (route === "home" || route === "liked" || route === "profile")) {
+    renderPage(lastSnapshot);
+  }
 }
 
 function renderRecent(recentIds) {
@@ -263,15 +575,17 @@ function renderPage(snapshot) {
     html = renderLiked(snapshot.liked);
   } else if (route === "recent") {
     html = renderRecent(snapshot.recent);
+  } else if (route === "login") {
+    html = renderLogin();
+  } else if (route === "register") {
+    html = renderRegister();
+  } else if (route === "profile") {
+    html = renderProfile(snapshot);
   } else {
     html = renderHome(snapshot.recent);
   }
   main.innerHTML = html;
-  var buttons = document.querySelectorAll(".nav-btn");
-  var i;
-  for (i = 0; i < buttons.length; i += 1) {
-    buttons[i].classList.toggle("is-active", buttons[i].getAttribute("data-route") === route);
-  }
+  markActiveNav();
   if (route === "search") {
     var field = document.getElementById("search-input");
     if (field && document.activeElement !== field) {
@@ -407,7 +721,7 @@ function onPlayer(snapshot) {
     return;
   }
   if (snapshot.reason === "like") {
-    if (route === "liked") {
+    if (route === "liked" || route === "profile") {
       renderPage(snapshot);
     } else {
       refreshLikes(snapshot);
@@ -425,7 +739,7 @@ function navigate(nextRoute) {
 
 function readHash() {
   var value = location.hash.replace("#", "");
-  var known = ["home", "search", "library", "playlists", "liked", "recent"];
+  var known = ["home", "search", "library", "playlists", "liked", "recent", "login", "register", "profile"];
   if (known.indexOf(value) === -1) {
     return "home";
   }
@@ -462,7 +776,21 @@ function bindChrome() {
     var playBtn = event.target.closest("[data-play]");
     var likeBtn = event.target.closest("[data-like]");
     var playlistBtn = event.target.closest("[data-playlist]");
+    var actionBtn = event.target.closest("[data-action]");
+    if (event.target.id === "auth-modal") {
+      closeAuthModal();
+      return;
+    }
+    if (actionBtn) {
+      if (actionBtn.getAttribute("data-action") === "logout") {
+        logout();
+      } else if (actionBtn.getAttribute("data-action") === "close-modal") {
+        closeAuthModal();
+      }
+      return;
+    }
     if (routeBtn) {
+      closeAuthModal();
       navigate(routeBtn.getAttribute("data-route"));
       return;
     }
@@ -490,6 +818,8 @@ function bindChrome() {
     searchQuery = event.target.value;
     document.getElementById("search-results").innerHTML = searchMarkup(searchQuery);
   });
+
+  document.getElementById("main").addEventListener("submit", handleSubmit);
 
   document.getElementById("play-btn").addEventListener("click", function () {
     Player.toggle();
@@ -525,13 +855,18 @@ function bindChrome() {
   bindVolume(document.getElementById("full-volume"));
 
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && !closeAuthModal()) {
       Player.closeFull();
     }
   });
 
   window.addEventListener("hashchange", function () {
-    route = readHash();
+    var guarded = guardRoute(readHash());
+    if (guarded !== readHash()) {
+      navigate(guarded);
+      return;
+    }
+    route = guarded;
     if (lastSnapshot) {
       renderPage(lastSnapshot);
     }
@@ -540,9 +875,15 @@ function bindChrome() {
 
 function initApp() {
   Player.init();
+  Favorites.init({
+    onAuthRequired: openAuthModal,
+    onError: showToast
+  });
+  Auth.init();
   bindChrome();
   route = readHash();
   Player.subscribe(onPlayer);
+  Auth.subscribe(onAuth);
   if (location.hash !== "#" + route) {
     location.hash = route;
   }

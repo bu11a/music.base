@@ -59,6 +59,15 @@
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
     </symbol>
+    <symbol id="i-user" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 21a8 8 0 0 1 16 0"/>
+    </symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <path d="m16 17 5-5-5-5"/>
+      <path d="M21 12H9"/>
+    </symbol>
     <symbol id="i-close" viewBox="0 0 24 24">
       <path d="m6 9 6 6 6-6"/>
     </symbol>
@@ -99,6 +108,7 @@
           <span>Recently Played</span>
         </button>
       </div>
+      <div class="account" id="account" aria-label="Account"></div>
       <p class="credit">Kevin MacLeod (incompetech.com), CC BY 4.0. SoundHelix examples.</p>
     </aside>
 
@@ -185,8 +195,28 @@
     </div>
   </section>
 
+  <div class="modal" id="auth-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+      <span class="logo-mark" aria-hidden="true"></span>
+      <h2 id="auth-modal-title">Save songs you love</h2>
+      <p>Log in or create a free account to add tracks to your favorites. They stay with you on any device.</p>
+      <div class="modal-actions">
+        <button class="primary-btn" type="button" data-route="login">Log in</button>
+        <button class="secondary-btn" type="button" data-route="register">Sign up</button>
+      </div>
+      <button class="text-btn" type="button" data-action="close-modal">Not now</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Supabase JS из CDN. Если он не загрузится, плеер всё равно работает, просто без аккаунтов. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script src="data.js"></script>
   <script src="player.js"></script>
+  <script src="auth.js"></script>
+  <script src="favorites.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

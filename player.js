@@ -2,6 +2,7 @@ var Player = (function () {
   var audio = new Audio();
   var listeners = [];
   var seeking = false;
+  var likeHandler = null;
   var state = {
     queue: [],
     index: -1,
@@ -55,9 +56,7 @@ var Player = (function () {
         return;
       }
       var saved = JSON.parse(raw);
-      if (saved.liked) {
-        state.liked = saved.liked;
-      }
+      // Избранное теперь хранится в аккаунте (Supabase), а не в браузере — см. favorites.js.
       if (saved.recent && saved.recent.length) {
         state.recent = saved.recent;
       }
@@ -65,17 +64,17 @@ var Player = (function () {
         state.volume = saved.volume;
       }
     } catch (err) {
-      state.liked = {};
+      return;
     }
   }
 
   function saveStore() {
     try {
-      localStorage.setItem("music.base", JSON.stringify({
-        liked: state.liked,
-        recent: state.recent,
-        volume: state.volume
-      }));
+      var saved = JSON.parse(localStorage.getItem("music.base") || "{}") || {};
+      saved.recent = state.recent;
+      saved.volume = state.volume;
+      // Старые лайки (если остались) не трогаем: favorites.js перенесёт их в аккаунт при входе.
+      localStorage.setItem("music.base", JSON.stringify(saved));
     } catch (err) {
       return;
     }
@@ -260,12 +259,36 @@ var Player = (function () {
     if (!trackId) {
       return;
     }
-    if (state.liked[trackId]) {
-      delete state.liked[trackId];
-    } else {
-      state.liked[trackId] = true;
+    if (likeHandler) {
+      likeHandler(trackId);
+      return;
     }
-    saveStore();
+    setLike(trackId, !state.liked[trackId]);
+  }
+
+  // Кто решает, можно ли лайкать (например, нужен ли вход). Без обработчика — старое поведение.
+  function setLikeHandler(handler) {
+    likeHandler = typeof handler === "function" ? handler : null;
+  }
+
+  function setLike(id, on) {
+    if (on) {
+      state.liked[id] = true;
+    } else {
+      delete state.liked[id];
+    }
+    emit("like");
+  }
+
+  function setLiked(map) {
+    var next = {};
+    var id;
+    for (id in map) {
+      if (Object.prototype.hasOwnProperty.call(map, id) && map[id]) {
+        next[id] = true;
+      }
+    }
+    state.liked = next;
     emit("like");
   }
 
@@ -344,6 +367,9 @@ var Player = (function () {
     setSeeking: setSeeking,
     setVolume: setVolume,
     toggleLike: toggleLike,
+    setLikeHandler: setLikeHandler,
+    setLike: setLike,
+    setLiked: setLiked,
     isLiked: isLiked,
     openFull: openFull,
     closeFull: closeFull
